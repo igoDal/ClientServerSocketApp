@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using Client.Interfaces;
+using Client.Services;
 
 namespace Client;
 
@@ -30,5 +31,14 @@ public class Client
         IPHostEntry ipHostEntry = Dns.GetHostEntry(Dns.GetHostName());
         IPAddress ipAddress = ipHostEntry.AddressList[0];
         IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, 11111);
+        
+        Socket socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        IRealClientSocket realSocketClient = new RealClientSocket(socket);
+            
+        Client clientSocket = new Client(realSocketClient);
+
+        clientSocket.ExecuteClient();
     }
+    
+    
 }

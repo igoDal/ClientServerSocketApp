@@ -9,7 +9,7 @@ namespace Client;
 
 public class Client
 {
-    private bool isLoggedIn = false;
+    private bool isLoggedIn = true;
     private bool isOnline = false;
     private bool continueListening = true;
     private Socket sender;
@@ -71,6 +71,19 @@ public class Client
                         Console.WriteLine(encodedInitComm);
 
                         string command = Console.ReadLine();
+                        switch (command)
+                        {
+                            case "add":
+                            case "logout":
+                            case "stop":
+                            case "msg":
+                            case "read":
+                            case "user":
+                            case "help":
+                            default:
+                                defaultMsg(command);
+                                break;
+                        }
                     }
                 }
             }
@@ -85,6 +98,19 @@ public class Client
             Console.WriteLine(e);
             throw;
         }
+    }
+
+    private void defaultMsg(string command)
+    {
+        string jsonCommand = JsonConvert.SerializeObject(command);
+        byte[] msgSent = Encoding.ASCII.GetBytes(jsonCommand);
+        int byteSent = _realClientSocket.Send(msgSent);
+        byte[] msgReceived = new byte[1024];
+
+        int byteReceived = _realClientSocket.Receive(msgReceived);
+        string jsonString = Encoding.ASCII.GetString(msgReceived, 0, byteReceived);
+        string encodingString = JsonConvert.DeserializeObject(jsonString).ToString();
+        Console.WriteLine(encodingString);
     }
     
     

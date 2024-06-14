@@ -74,7 +74,15 @@ public class Server
                     int numByte = client.Receive(firstBytes);
                     jsonMsg += Encoding.ASCII.GetString(bytes);
                     string data = JsonConvert.DeserializeObject(jsonData).ToString();
-                    Console.WriteLine("Text received", data);
+                    Console.WriteLine("Text received -> {0}", data);
+
+                    switch (data.ToLower())
+                    {
+                        case "help":
+                        default:
+                            helpCommand();
+                            break;
+                    }
                 }
                 
             }
@@ -85,4 +93,22 @@ public class Server
             throw;
         }
     }
+
+    private void helpCommand()
+    {
+        var jsonMsg = JsonConvert.SerializeObject($"Available commands:\n" +
+                                              $"'add' - to add new user\n" +
+                                              $"'help' - to get a list of available commands with their description\n" +
+                                              $"'info' - to get info about server version, server creation date\n" +
+                                              $"'msg' - to send a message to other user\n" +
+                                              $"'read' - to read next message\n" +
+                                              $"'uptime' - to check server uptime\n" +
+                                              $"'user' - to print user data" +
+                                              $"'stop' - to stop the server\n" +
+                                              $"'logout' - to log out");
+        
+        byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
+        client.Send(message);
+    }
+    
 }

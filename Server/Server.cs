@@ -9,30 +9,39 @@ using Server.Services;
 namespace Server;
 public class Server
 {
-    private readonly IRealServerSocket _realServerSocket;
-    private Socket client;
-    private bool stopped = false;
-    private bool loggedIn = true;
+    //private readonly IRealServerSocket _realServerSocket;
+    private static Socket clientSocket;
+    private readonly static string serverVersion = "0.0.3";
+    private readonly static DateTime serverCreationDate = DateTime.Now;
+    private static byte[] message;
+    private static string jsonMsg;
+    private static readonly byte[] bytes = new byte[1024];
+    private static readonly byte[] bytesU = new byte[1024];
+    private static readonly byte[] bytesP = new byte[1024];
+    private static bool loggedIn = false;
+    private static bool stopped = false;
+    private static string currentRole;
+    private static string loggedInUser;
 
-    public Server(IRealServerSocket realServerSocket)
-    {
-        _realServerSocket = realServerSocket;
-    }
+    // public Server(IRealServerSocket realServerSocket)
+    // {
+    //     _realServerSocket = realServerSocket;
+    // }
 
     static void Main(string[] args)
     {
-        IPHostEntry ipHostEntry = Dns.GetHostEntry(Dns.GetHostName());
-        IPAddress ipAddress = ipHostEntry.AddressList[0];
-        IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, 11111);
-        Socket listener = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        // IPHostEntry ipHostEntry = Dns.GetHostEntry(Dns.GetHostName());
+        // IPAddress ipAddress = ipHostEntry.AddressList[0];
+        // IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, 11111);
+        // Socket listener = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        //
+        // IRealServerSocket realServerSocket = new RealServerSocket(listener);
+        // Server serverSocket = new Server(realServerSocket);
 
-        IRealServerSocket realServerSocket = new RealServerSocket(listener);
-        Server serverSocket = new Server(realServerSocket);
-
-        serverSocket.ExecuteServer();
+        ExecuteServer();
     }
 
-    public void ExecuteServer()
+    public static void ExecuteServer()
     {
         IPHostEntry ipHostEntry = Dns.GetHostEntry(Dns.GetHostName());
         IPAddress ipAddress = ipHostEntry.AddressList[0];
@@ -45,7 +54,7 @@ public class Server
             listener.Listen(10);
             
             Console.WriteLine("Awaiting connection...");
-            client = listener.Accept();
+            clientSocket = listener.Accept();
             Console.WriteLine("Connected");
 
             while (!stopped)
@@ -53,32 +62,40 @@ public class Server
                 byte[] firstBytes = new byte[1024];
                 string firstJsonData = null;
 
-                int firstNumByte = client.Receive(firstBytes);
+                int firstNumByte = clientSocket.Receive(firstBytes);
                 firstJsonData += Encoding.ASCII.GetString(firstBytes, 0, firstNumByte);
                 string firstData = JsonConvert.DeserializeObject(firstJsonData).ToString();
 
-                /*if (data.ToLower() == "login")
+                if (firstData.ToLower() == "login")
                 {
                     login();
-                }*/
-
+                }
+                else if (firstData.ToLower() == "add")
+                {
+                    addUser();
+                }
+                else
+                    break;
+                
                 while (loggedIn)
                 {
-                    var jsonMsg = JsonConvert.SerializeObject("Enter comm");
-                    var msg = Encoding.ASCII.GetBytes(jsonMsg);
-                    client.Send(msg);
+                    jsonMsg = JsonConvert.SerializeObject("Enter comm");
+                    message = Encoding.ASCII.GetBytes(jsonMsg);
+                    clientSocket.Send(message);
 
                     byte[] bytes = new byte[1024];
                     string jsonData = null;
                     
-                    int numByte = client.Receive(firstBytes);
-                    jsonMsg += Encoding.ASCII.GetString(bytes);
+                    int numByte = clientSocket.Receive(bytes);
+                    jsonData += Encoding.ASCII.GetString(bytes, 0, numByte);
                     string data = JsonConvert.DeserializeObject(jsonData).ToString();
                     Console.WriteLine("Text received -> {0}", data);
 
                     switch (data.ToLower())
                     {
                         case "help":
+                            helpCommand();
+                            break;
                         default:
                             helpCommand();
                             break;
@@ -94,7 +111,7 @@ public class Server
         }
     }
 
-    private void helpCommand()
+    private static void helpCommand()
     {
         var jsonMsg = JsonConvert.SerializeObject($"Available commands:\n" +
                                               $"'add' - to add new user\n" +
@@ -108,7 +125,109 @@ public class Server
                                               $"'logout' - to log out");
         
         byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
-        client.Send(message);
+        clientSocket.Send(message);
     }
     
+    private static void login()
+    {
+        jsonMsg = JsonConvert.SerializeObject($"Enter username:");
+        message = Encoding.ASCII.GetBytes(jsonMsg);
+        clientSocket.Send(message);
+
+        string username;
+        string password;
+        int numByte = clientSocket.Receive(bytesU);
+        string jsonUsername = Encoding.ASCII.GetString(bytesU, 0, numByte);
+        username = JsonConvert.DeserializeObject(jsonUsername).ToString();
+        var file = $"{username}.json";
+
+        if (File.Exists(file))
+        {
+            var fileRead = File.ReadAllText(file);
+            jsonMsg = JsonConvert.SerializeObject($"Enter password:");
+            message = Encoding.ASCII.GetBytes(jsonMsg);
+            clientSocket.Send(message);
+
+            JsonReader line;
+            int numBytePassword = clientSocket.Receive(bytesP);
+            string jsonPassword = Encoding.ASCII.GetString(bytesP, 0, numBytePassword);
+            password = JsonConvert.DeserializeObject(jsonPassword).ToString();
+
+            var singleUserData = JsonConvert.DeserializeObject<User>(fileRead);
+            string getPassword = singleUserData.Password;
+            currentRole = singleUserData.Role;
+            loggedInUser = singleUserData.Userame;
+            
+
+
+            Console.WriteLine(getPassword);
+            if (getPassword.Equals(password))
+            {
+                loggedIn = true;
+                jsonMsg = JsonConvert.SerializeObject($"loggedIn");
+                message = Encoding.ASCII.GetBytes(jsonMsg);
+                clientSocket.Send(message);
+            }
+            else
+            {
+                jsonMsg = JsonConvert.SerializeObject($"Incorrect password!");
+                message = Encoding.ASCII.GetBytes(jsonMsg);
+                clientSocket.Send(message);
+            }
+        }
+        else
+        {
+            jsonMsg = JsonConvert.SerializeObject($"user doesn't exist.");
+            message = Encoding.ASCII.GetBytes(jsonMsg);
+            clientSocket.Send(message);
+        }
+    }
+    
+    private static void addUser()
+    {
+        jsonMsg = JsonConvert.SerializeObject($"Enter username:");
+        message = Encoding.ASCII.GetBytes(jsonMsg);
+        clientSocket.Send(message);
+
+        string username;
+        string password;
+        int numByte = clientSocket.Receive(bytesU);
+        string jsonUsername = Encoding.ASCII.GetString(bytesU, 0, numByte);
+        username = JsonConvert.DeserializeObject(jsonUsername).ToString();
+
+        if (!File.Exists($"{username}.json"))
+        {
+            jsonMsg = JsonConvert.SerializeObject($"Enter password:");
+            message = Encoding.ASCII.GetBytes(jsonMsg);
+            clientSocket.Send(message);
+
+            int numBytePassword = clientSocket.Receive(bytesP);
+            string jsonPassword = Encoding.ASCII.GetString(bytesP, 0, numBytePassword);
+            password = JsonConvert.DeserializeObject(jsonPassword).ToString();
+
+
+            User user = new User()
+            {
+                Userame = username,
+                Password = password,
+                Role = "user"
+            };
+
+            using (StreamWriter file = File.CreateText($"{username}.json"))
+            {
+                JsonSerializer serializer = new JsonSerializer();
+                serializer.Serialize(file, user);
+            }
+
+            jsonMsg = JsonConvert.SerializeObject($"User {username} has been added.");
+            message = Encoding.ASCII.GetBytes(jsonMsg);
+        }
+
+        else
+        {
+            jsonMsg = JsonConvert.SerializeObject($"User {username} already exists.");
+            message = Encoding.ASCII.GetBytes(jsonMsg);
+        }
+        clientSocket.Send(message);
+    }
 }

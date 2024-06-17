@@ -182,7 +182,14 @@ public class Server
             clientSocket.Send(message);
         }
     }
-    
+    private static void logout()
+    {
+        loggedIn = false;
+
+        jsonMsg = JsonConvert.SerializeObject("logout");
+        byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
+        clientSocket.Send(message);
+    }
     private static void addUser()
     {
         jsonMsg = JsonConvert.SerializeObject($"Enter username:");
@@ -229,5 +236,43 @@ public class Server
             message = Encoding.ASCII.GetBytes(jsonMsg);
         }
         clientSocket.Send(message);
+    }
+    private static void deleteUser()
+    {
+        Console.WriteLine("Enter user (username) to delete: ");
+        string username = Console.ReadLine();
+        if (File.Exists($"{username}.txt"))
+            File.Delete($"{username}.txt");
+
+        jsonMsg = JsonConvert.SerializeObject($"User {username} has been removed.");
+        byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
+        clientSocket.Send(message);
+    }
+    private static void incorrectCommand()
+    {
+        jsonMsg = JsonConvert.SerializeObject($"Incorrect command. Type 'help' to get list of commands.");
+        byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
+        clientSocket.Send(message);
+    }
+    private static void stopCommand()
+    {
+
+        try
+        {
+            jsonMsg = JsonConvert.SerializeObject("stop");
+            byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
+            clientSocket.Send(message);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error while sending 'stop' command: " + ex.ToString());
+        }
+        finally
+        {
+            // Close the client socket
+            //clientSocket.Close();
+            loggedIn = false; // Exit the loggedIn loop
+            stopped = true;
+        }
     }
 }

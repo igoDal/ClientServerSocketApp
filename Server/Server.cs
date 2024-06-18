@@ -275,4 +275,18 @@ public class Server
             stopped = true;
         }
     }
+    private static void uptimeCommand()
+    {
+        DateTime serverCurrentDate = DateTime.Now;
+        jsonMsg = JsonConvert.SerializeObject($"Server is up for {serverCurrentDate - serverCreationDate}");
+        byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
+        clientSocket.Send(message);
+    }
+    private static void infoCommand()
+    {
+        jsonMsg = JsonConvert.SerializeObject($"Server version: {serverVersion}\n" +
+                                              $"Server Creation Date: {serverCreationDate}");
+        byte[] message = Encoding.ASCII.GetBytes(jsonMsg);
+        clientSocket.Send(message);
+    }
 }

@@ -239,5 +239,53 @@ public class Client
         sender.Send(sendPassword);
     }
     
+    private static void readMessage(string command)
+    {
+        defaultMsg(command);
+    }
+
+    private static void sendMessage(string command)
+    {
+        //Call sendMessage method on server side
+        string jsonCommand = JsonConvert.SerializeObject(command);
+        byte[] msgCommand = Encoding.ASCII.GetBytes(jsonCommand);
+        int byteSent = sender.Send(msgCommand);
+        byte[] msgReceived = new byte[1024];
+        int byteRcvd = sender.Receive(msgReceived);
+        string jsonString = Encoding.ASCII.GetString(msgReceived, 0, byteRcvd);
+        string encodingString = JsonConvert.DeserializeObject(jsonString).ToString();
+
+        Console.WriteLine(encodingString);
+        
+        //Request for username (message receiver)
+        string userToSend = Console.ReadLine();
+        string jsonUserToSend= JsonConvert.SerializeObject(userToSend);
+        byte[] usernameSent = Encoding.ASCII.GetBytes(jsonUserToSend);
+        int byteUserToSend = sender.Send(usernameSent);
+
+        byte[] userToSendReceived = new byte[1024];
+
+        int byteUserRcvd = sender.Receive(userToSendReceived);
+        string jsonUserString = Encoding.ASCII.GetString(userToSendReceived, 0, byteUserRcvd);
+        string encodingUserString = JsonConvert.DeserializeObject(jsonUserString).ToString();
+        Console.WriteLine(encodingUserString);
+
+        string message = Console.ReadLine();
+        const int MAX_LENGTH = 255;
+        if (message.Length > MAX_LENGTH)
+        {
+            message = message.Substring(0, MAX_LENGTH);
+        }
+        string jsonMessage = JsonConvert.SerializeObject(message);
+        byte[] messageToSend = Encoding.ASCII.GetBytes(jsonMessage);
+        int byteMessageSent = sender.Send(messageToSend);
+
+        byte[] messageReceived = new byte[1024];
+        int byteMessageRcvd = sender.Receive(messageReceived);
+        string jsonStringMessage = Encoding.ASCII.GetString(messageReceived, 0, byteMessageRcvd);
+        string encodingStringMessage = JsonConvert.DeserializeObject(jsonStringMessage).ToString();
+        Console.WriteLine(encodingStringMessage);
+    }
+    
     
 }

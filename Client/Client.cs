@@ -23,12 +23,7 @@ public class Client
             return isLoggedIn;
         }
     }
-
-    // public Client(IRealClientSocket realClientSocket)
-    // {
-    //     _realClientSocket = realClientSocket;
-    // }
-
+    
     static void Main(string[] args)
     {
         // IPHostEntry ipHostEntry = Dns.GetHostEntry(Dns.GetHostName());
@@ -115,46 +110,7 @@ public class Client
         string encodingString = JsonConvert.DeserializeObject(jsonString).ToString();
         Console.WriteLine(encodingString);
     }
-    
-    public static void login(string username, string password)
-    {
-        Console.WriteLine();
-        string msg = "login";
 
-        var userReq = usernameRequest(msg);
-
-
-        if (userReq.ToLower().Contains("username")) enterUsername(username);
-
-
-        var passRequested = passwordRequest();
-
-        if (passRequested.ToLower().Contains("password"))
-        {
-            enterPassword(password);
-        }
-        else
-        {
-            Console.WriteLine(passRequested);
-            return;
-        }
-            
-        byte[] receiveLoginAnswer = new byte[1024];
-        int loginAnswerReceived = sender.Receive(receiveLoginAnswer);
-        string jsonLoginAnswer = Encoding.ASCII.GetString(receiveLoginAnswer, 0, loginAnswerReceived);
-        string encodingLoginAnswer = JsonConvert.DeserializeObject(jsonLoginAnswer).ToString();
-
-        if (encodingLoginAnswer == "loggedIn") 
-        {
-            Console.WriteLine($"\n{username} has logged in.");
-            isLoggedIn = true;
-        }
-        else
-        {
-            Console.WriteLine(encodingLoginAnswer);
-        }
-    }
-    
     private static void Menu()
     {
         Console.WriteLine("\nType '1' to login\n" +
@@ -287,5 +243,84 @@ public class Client
         Console.WriteLine(encodingStringMessage);
     }
     
+    private static void stop(string command)
+    {
+        string jsonCommand = JsonConvert.SerializeObject(command);
+        byte[] messageSent = Encoding.ASCII.GetBytes(jsonCommand);
+
+        sender.Send(messageSent);
+        sender.Shutdown(SocketShutdown.Both);
+        sender.Close();
+
+        continueListening = false;
+    }
     
+    public static void login(string username, string password)
+    {
+        Console.WriteLine();
+        string msg = "login";
+
+        var userReq = usernameRequest(msg);
+
+
+        if (userReq.ToLower().Contains("username")) enterUsername(username);
+
+
+        var passRequested = passwordRequest();
+
+        if (passRequested.ToLower().Contains("password"))
+        {
+            enterPassword(password);
+        }
+        else
+        {
+            Console.WriteLine(passRequested);
+            return;
+        }
+            
+        byte[] receiveLoginAnswer = new byte[1024];
+        int loginAnswerReceived = sender.Receive(receiveLoginAnswer);
+        string jsonLoginAnswer = Encoding.ASCII.GetString(receiveLoginAnswer, 0, loginAnswerReceived);
+        string encodingLoginAnswer = JsonConvert.DeserializeObject(jsonLoginAnswer).ToString();
+
+        if (encodingLoginAnswer == "loggedIn") 
+        {
+            Console.WriteLine($"\n{username} has logged in.");
+            isLoggedIn = true;
+        }
+        else
+        {
+            Console.WriteLine(encodingLoginAnswer);
+        }
+    }
+    private static void logout(string command)
+    {
+        isLoggedIn = false;
+        defaultMsg(command);
+    }
+    
+    private static void printUserInfo(string command)
+    {
+        string jsonCommand = JsonConvert.SerializeObject(command);
+        byte[] messageSent = Encoding.ASCII.GetBytes(jsonCommand);
+        int byteSent = sender.Send(messageSent);
+
+        byte[] messageReceived = new byte[1024];
+
+        int byteRcvd = sender.Receive(messageReceived);
+        string jsonString = Encoding.ASCII.GetString(messageReceived, 0, byteRcvd);
+        string encodingString = JsonConvert.DeserializeObject(jsonString).ToString();
+
+        if (encodingString.ToLower().Equals("approved"))
+        {
+            Console.WriteLine("\nEnter username you'd like to check");
+            string username = Console.ReadLine();
+            defaultMsg(username);
+        }
+        else
+        {
+            defaultMsg(encodingString);
+        }
+            
+    }
 }
